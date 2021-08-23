@@ -1,0 +1,19 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "A dummy backend",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dgoemans/pulumi-aws-intro.git"
+  },
+  "author": "David Goemans",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dgoemans/pulumi-aws-intro/issues"
+  },
+  "homepage": "https://github.com/dgoemans/pulumi-aws-intro#readme"
+}

@@ -1,0 +1,18 @@
+<html>
+    <head>
+        <script>
+            fetch('/api').then(function (response) {
+                response.text().then(function (text) {
+                    var status = document.getElementById('status')
+                    status.innerHTML = "The result from the server is " + text;
+                })
+            })
+
+        </script>
+    </head>
+
+    <body>
+        <h1>Frontend!</h1>
+        <p id="status">Loading</p>
+    </body>
+</html>
