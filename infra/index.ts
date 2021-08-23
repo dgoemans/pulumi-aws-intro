@@ -159,14 +159,50 @@ const distribution = new aws.cloudfront.Distribution(`${PROJECT_NAME}-cf-dist`, 
 
 // Create a DNS record pointing to the cloudfront distribution
 new aws.route53.Record(`${PROJECT_NAME}-frontend-route`, {
-    name: DOMAIN,
-    zoneId: hostedZone.id,
-    type: "A",
-    aliases: [
-        {
-            name: distribution.domainName,
-            zoneId: distribution.hostedZoneId,
-            evaluateTargetHealth: true,
-        },
-    ],
+  name: DOMAIN,
+  zoneId: hostedZone.id,
+  type: "A",
+  aliases: [
+      {
+          name: distribution.domainName,
+          zoneId: distribution.hostedZoneId,
+          evaluateTargetHealth: true,
+      },
+  ],
 });
+
+// Backend as a Lambda
+const role = new aws.iam.Role(`${PROJECT_NAME}-lambda-role`, {
+  assumeRolePolicy: aws.iam.assumeRolePolicyForPrincipal({
+      Service: ['lambda.amazonaws.com']
+  })
+});
+
+// Get a minimal set of permissions that the lambda needs. Note that this set uses wildcards, and is only for demonstration purposes!
+const policy = new aws.iam.RolePolicy(`${PROJECT_NAME}-lambda-policy`, {
+  role,
+  policy: pulumi.output({
+      Version: '2012-10-17',
+      Statement: [
+          {
+              Action: ['logs:*', 'cloudwatch:*'],
+              Resource: '*',
+              Effect: 'Allow'
+          }
+      ]
+  })
+});
+
+new aws.lambda.Function(`${PROJECT_NAME}-backend`, {
+    timeout: 30,
+    code: new pulumi.asset.AssetArchive({
+        // Point this to the backend build output directory.
+        '.': new pulumi.asset.FileArchive('../src/backend')
+    }),
+    memorySize: 256,
+    role: role.arn,
+    handler: 'index.handler',
+    runtime: aws.lambda.NodeJS12dXRuntime,
+  },
+  { dependsOn: policy }
+);
