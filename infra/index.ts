@@ -193,7 +193,7 @@ const policy = new aws.iam.RolePolicy(`${PROJECT_NAME}-lambda-policy`, {
   })
 });
 
-new aws.lambda.Function(`${PROJECT_NAME}-backend`, {
+const backendLambda = new aws.lambda.Function(`${PROJECT_NAME}-backend`, {
     timeout: 30,
     code: new pulumi.asset.AssetArchive({
         // Point this to the backend build output directory.
@@ -206,3 +206,61 @@ new aws.lambda.Function(`${PROJECT_NAME}-backend`, {
   },
   { dependsOn: policy }
 );
+
+// --- Put an Application Load Balancer in front of the backend
+
+const alb = new awsx.lb.ApplicationLoadBalancer(`${PROJECT_NAME}-backend`, {
+  name: `${PROJECT_NAME}-backend`,
+  external: true
+})
+
+const targetGroup = alb.createTargetGroup(`${PROJECT_NAME}`, {
+  targetType: 'lambda',
+  port: 80,
+  // Replace this with a health check endpoint
+  healthCheck: {
+    path: '/health',
+    interval: 60,
+  },
+})
+
+alb.createListener(`${PROJECT_NAME}-http`, {
+  port: 80,
+  targetGroup
+})
+
+// For the HTTPS listener, we must provide the certifcate
+alb.createListener(`${PROJECT_NAME}-https`, {
+  port: 443,
+  certificateArn: certificate.arn,
+  targetGroup
+})
+
+
+const permission = new aws.lambda.Permission(`${PROJECT_NAME}-lambda-permission`, {
+  action: "lambda:InvokeFunction",
+  "function": backendLambda.arn,
+  principal: "elasticloadbalancing.amazonaws.com",
+  sourceArn: targetGroup.targetGroup.arn,
+});
+
+
+new aws.lb.TargetGroupAttachment(`${PROJECT_NAME}-group-attachment`, {
+  targetGroupArn: targetGroup.targetGroup.arn,
+  targetId: backendLambda.arn,
+}, { dependsOn: [permission] });
+
+
+new aws.route53.Record(`${PROJECT_NAME}-portal-route`, {
+  // Set the backend domain to be prefixed with api.
+  name: `api.${DOMAIN}`,
+  type: 'A',
+  zoneId: hostedZone.id,
+  aliases: [
+    {
+      evaluateTargetHealth: true,
+      name: alb.loadBalancer.dnsName,
+      zoneId: alb.loadBalancer.zoneId,
+    },
+  ],
+})
