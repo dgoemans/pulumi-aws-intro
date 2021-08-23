@@ -1,7 +1,8 @@
 <html>
     <head>
         <script>
-            fetch('/api').then(function (response) {
+            var apiUrl = 'https://API_URL';
+            fetch(apiUrl).then(function (response) {
                 response.text().then(function (text) {
                     var status = document.getElementById('status')
                     status.innerHTML = "The result from the server is " + text;
